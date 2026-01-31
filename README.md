@@ -3,7 +3,7 @@
 Central script repository for the Create: Legacies Minecraft server, containing custom gameplay systems, economy and war mechanics, automation, balancing tweaks, events, and server-side infrastructure. Built to be modular, transparent, and extensible for future seasons.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Minecraft](https://img.shields.io/badge/Minecraft-1.19.2+-green.svg)
+![Minecraft](https://img.shields.io/badge/Minecraft-1.20.1-green.svg)
 ![KubeJS](https://img.shields.io/badge/KubeJS-Enabled-orange.svg)
 
 ## 📋 Table of Contents
