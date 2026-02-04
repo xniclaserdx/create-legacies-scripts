@@ -1,4 +1,4 @@
-// ==================== GLOBALE VARIABLEN ====================
+// ==================== GLOBAL VARIABLES ====================
 global.activeWars = global.activeWars || new Map()
 global.activeUnclaims = global.activeUnclaims || new Map()
 global.whitePeaceRequests = global.whitePeaceRequests || new Map()
@@ -6,20 +6,20 @@ global.defeatCooldowns = global.defeatCooldowns || new Map() // Party-ID -> Time
 global.warDeclareCooldowns = global.warDeclareCooldowns || new Map() // Party-ID -> Timestamp
 global.totalWarRequests = global.totalWarRequests || new Map() // War-Key -> { requesterId, timestamp }
 
-// ==================== KONSTANTEN ====================
-const WAR_DURATION = 2 * 60 * 60 * 1000 // 2 Stunden
-const UNCLAIM_DURATION = 60000 // 60 Sekunden
-const PEACE_REQUEST_TIMEOUT = 6000 // 5 Minuten in Ticks
-const DEFEAT_COOLDOWN = 60 * 60 * 1000 // 1 Stunde Claim-Sperre nach Niederlage
-const WAR_DECLARE_COOLDOWN = 24 * 60 * 60 * 1000 // 24 Stunden bis nächste Kriegserklärung
-const WAR_DATA_FILE = 'war_data.json' // Datei für persistente Speicherung
+// ==================== CONSTANTS ====================
+const WAR_DURATION = 2 * 60 * 60 * 1000 // 2 hours
+const UNCLAIM_DURATION = 60000 // 60 seconds
+const PEACE_REQUEST_TIMEOUT = 6000 // 5 minutes in ticks
+const DEFEAT_COOLDOWN = 60 * 60 * 1000 // 1 hour claim lock after defeat
+const WAR_DECLARE_COOLDOWN = 24 * 60 * 60 * 1000 // 24 hours until next war declaration
+const WAR_DATA_FILE = 'war_data.json' // File for persistent storage
 const WAR_SETTINGS = {
     war: { allow_pvp: 'true', block_edit_mode: 'private', allow_explosions: 'true', block_interact_mode: 'public' },
     peace: { allow_pvp: 'false', block_edit_mode: 'allies', allow_explosions: 'false', block_interact_mode: 'allies' },
     totalwar: { block_edit_mode: 'public' }
 }
 
-// ==================== PERSISTENZ FUNKTIONEN ====================
+// ==================== PERSISTENCE FUNCTIONS ====================
 function saveWarData() {
     try {
         let data = {
@@ -28,7 +28,7 @@ function saveWarData() {
             warDeclareCooldowns: {}
         }
         
-        // Konvertiere Maps zu Objekten
+        // Convert Maps to objects
         global.activeWars.forEach((value, key) => {
             data.activeWars[key] = value
         })
@@ -41,7 +41,7 @@ function saveWarData() {
             data.warDeclareCooldowns[key] = value
         })
         
-        // Speichere in data/ Ordner
+        // Save in data/ folder
         JsonIO.write('kubejs/data/' + WAR_DATA_FILE, data)
         console.log('[FactionWar] War data saved successfully')
     } catch (error) {
@@ -58,7 +58,7 @@ function loadWarData() {
             return
         }
         
-        // Lade activeWars
+        // Load activeWars
         if (file.activeWars) {
             Object.keys(file.activeWars).forEach(key => {
                 global.activeWars.set(key, file.activeWars[key])
@@ -66,7 +66,7 @@ function loadWarData() {
             console.log('[FactionWar] Loaded ' + global.activeWars.size + ' active wars')
         }
         
-        // Lade defeatCooldowns
+        // Load defeatCooldowns
         if (file.defeatCooldowns) {
             Object.keys(file.defeatCooldowns).forEach(key => {
                 global.defeatCooldowns.set(key, file.defeatCooldowns[key])
@@ -74,7 +74,7 @@ function loadWarData() {
             console.log('[FactionWar] Loaded ' + global.defeatCooldowns.size + ' defeat cooldowns')
         }
         
-        // Lade warDeclareCooldowns
+        // Load warDeclareCooldowns
         if (file.warDeclareCooldowns) {
             Object.keys(file.warDeclareCooldowns).forEach(key => {
                 global.warDeclareCooldowns.set(key, file.warDeclareCooldowns[key])
@@ -84,19 +84,19 @@ function loadWarData() {
         
         console.log('[FactionWar] War data loaded successfully')
         
-        // Reaktiviere War Settings und Schedule Auto-Ends
+        // Reactivate War Settings and Schedule Auto-Ends
         global.activeWars.forEach((warData, warKey) => {
-            // Reaktiviere War Settings
+            // Reactivate War Settings
             if (warData.myPartyName && warData.enemyPartyName) {
                 console.log('[FactionWar] Reactivating war: ' + warKey)
                 
-                // Berechne verbleibende Zeit
+                // Calculate remaining time
                 let elapsed = Date.now() - warData.startTime
                 let remaining = WAR_DURATION - elapsed
                 
                 if (remaining > 0) {
-                    // Schedule Auto-End für verbleibende Zeit
-                    let remainingTicks = Math.floor(remaining / 50) // ms zu Ticks
+                    // Schedule Auto-End for remaining time
+                    let remainingTicks = Math.floor(remaining / 50) // ms to ticks
                     Utils.server.scheduleInTicks(remainingTicks, () => {
                         if (global.activeWars.has(warKey)) {
                             console.log('[FactionWar] Auto-ending war: ' + warKey)
@@ -106,9 +106,9 @@ function loadWarData() {
                     })
                     console.log('[FactionWar] Scheduled auto-end for war in ' + Math.floor(remaining / 60000) + ' minutes')
                 } else {
-                    // War sollte bereits beendet sein
+                    // War should already be ended
                     console.log('[FactionWar] War expired during restart, ending now: ' + warKey)
-                    // Wir können den Server hier noch nicht verwenden, also markieren für späteren End
+                    // We cannot use the server here yet, so mark for later end
                     Utils.server.scheduleInTicks(100, () => {
                         if (global.activeWars.has(warKey)) {
                             endWar(Utils.server, warKey, warData)
@@ -133,7 +133,7 @@ const ObjectiveCriteria = Java.loadClass('net.minecraft.world.scores.criteria.Ob
 const getTeamManager = () => FTBTeamsAPI.api().getManager()
 const getChunksManager = () => FTBChunksAPI.api().getManager()
 
-// ==================== PARTY FUNKTIONEN ====================
+// ==================== PARTY FUNCTIONS ====================
 function findPartyByName(partyName) {
     let found = null
     getTeamManager().getTeams().forEach(team => {
@@ -165,7 +165,7 @@ function countPartyClaims(partyShortName) {
     }
 }
 
-// ==================== WAR FUNKTIONEN ====================
+// ==================== WAR FUNCTIONS ====================
 function findPlayerWar(partyId) {
     for (let [key, data] of global.activeWars) {
         if (data.myPartyId === partyId || data.enemyPartyId === partyId) {
@@ -189,7 +189,7 @@ function endWar(server, warKey, warData) {
     removeWarScoreboard(server, warKey)
     removeAllWarUnclaimers(server, warData.myPartyId, warData.enemyPartyId)
     
-    // Setze War Declare Cooldown für beide Parties
+    // Set War Declare Cooldown for both parties
     setWarDeclareCooldown(warData.myPartyId, warData.myPartyName)
     setWarDeclareCooldown(warData.enemyPartyId, warData.enemyPartyName)
     
@@ -220,7 +220,7 @@ function scheduleWarAutoEnd(warKey, warData) {
     })
 }
 
-// ==================== ITEM FUNKTIONEN ====================
+// ==================== ITEM FUNCTIONS ====================
 function createUnclaimerItem(warKey) {
     return Item.of('minecraft:golden_sword', {
         warUnclaimer: 1,
@@ -257,7 +257,7 @@ function removeAllWarUnclaimers(server, myPartyId, enemyPartyId) {
     })
 }
 
-// ==================== UI FUNKTIONEN ====================
+// ==================== UI FUNCTIONS ====================
 function formatTimeRemaining(millisRemaining) {
     let totalSeconds = Math.floor(millisRemaining / 1000)
     let hours = Math.floor(totalSeconds / 3600)
@@ -386,7 +386,7 @@ function suggestPartyNames(builder, onlyWarParties) {
 
 // ==================== EVENT HANDLERS ====================
 
-// Lade War Data beim Server-Start
+// Load War Data on server start
 ServerEvents.loaded(event => {
     console.log('[FactionWar] Loading war data from file...')
     loadWarData()
@@ -442,7 +442,7 @@ ServerEvents.tick(event => {
                 return
             }
             
-            // Prüfe Item in Hand
+            // Check item in hand
             let hasItem = [player.mainHandItem, player.offHandItem].some(item => 
                 item && item.nbt && item.nbt.warUnclaimer === 1
             )
@@ -453,7 +453,7 @@ ServerEvents.tick(event => {
                 return
             }
             
-            // Prüfe Position
+            // Check position
             let currentChunk = player.chunkPosition()
             if (currentChunk.x !== unclaimData.startChunkX || currentChunk.z !== unclaimData.startChunkZ) {
                 player.tell(Component.red('§c[War] Unclaim aborted - you left the chunk!'))
@@ -461,7 +461,7 @@ ServerEvents.tick(event => {
                 return
             }
             
-            // Progress anzeigen
+            // Display progress
             let elapsed = Date.now() - unclaimData.startTime
             let progress = Math.min(elapsed / UNCLAIM_DURATION, 1.0)
             let barLength = 60
@@ -469,7 +469,7 @@ ServerEvents.tick(event => {
             let progressBar = '§a' + '|'.repeat(filledBars) + '§7' + '|'.repeat(barLength - filledBars)
             player.displayClientMessage(Component.literal('[' + progressBar + '§r]'), true)
             
-            // Fertig?
+            // Finished?
             if (progress >= 1.0 && !unclaimData.completed) {
                 unclaimData.completed = true
                 let dimension = player.level.dimension.toString()
@@ -478,7 +478,7 @@ ServerEvents.tick(event => {
                 player.tell(Component.green('§a[War] Successfully unclaimed enemy territory!'))
                 player.playSound('minecraft:entity.player.levelup', 1.0, 1.0)
                 
-                // Check ob Feind Claims verloren hat
+                // Check if enemy has lost claims
                 if (countPartyClaims(unclaimData.enemyTeam) === 0) {
                     global.activeWars.forEach((warData, warKey) => {
                         if (warData.myPartyName === unclaimData.enemyTeam || warData.enemyPartyName === unclaimData.enemyTeam) {
@@ -501,7 +501,7 @@ ServerEvents.tick(event => {
     }
 })
 
-// Unclaimer Item Rechtsklick
+// Unclaimer Item Right Click
 ItemEvents.rightClicked('minecraft:golden_sword', event => {
     let item = event.item
     if (!item.nbt || item.nbt.warUnclaimer !== 1 || item.nbt.adminIssued !== 'true') return
@@ -586,7 +586,7 @@ ItemEvents.rightClicked('minecraft:golden_sword', event => {
     }
 })
 
-// Spieler Tod während War
+// Player death during war
 EntityEvents.death(event => {
     if (!event.entity.isPlayer()) return
     
@@ -596,7 +596,7 @@ EntityEvents.death(event => {
     
     let playerPartyId = playerTeamOptional.get().getTeamId().toString()
     
-    // Entferne aktiven Unclaim
+    // Remove active unclaim
     if (global.activeUnclaims.has(player.uuid.toString())) {
         global.activeUnclaims.delete(player.uuid.toString())
     }
@@ -647,7 +647,7 @@ ServerEvents.commandRegistry(event => {
                         let myPartyId = myParty.getTeamId().toString()
                         let enemyPartyId = enemyParty.getId().toString()
                         
-                        // Prüfe War Declare Cooldown
+                        // Check War Declare Cooldown
                         if (global.warDeclareCooldowns.has(myPartyId)) {
                             let cooldownStart = global.warDeclareCooldowns.get(myPartyId)
                             let cooldownEnd = cooldownStart + WAR_DECLARE_COOLDOWN
@@ -664,7 +664,7 @@ ServerEvents.commandRegistry(event => {
                             }
                         }
                         
-                        // Prüfe ob eine der Parties bereits in einem Krieg ist
+                        // Check if one of the parties is already in a war
                         let alreadyInWar = false
                         
                         global.activeWars.forEach((warData, warKey) => {
@@ -826,7 +826,7 @@ ServerEvents.commandRegistry(event => {
                         return 0
                     }
                     
-                    // Prüfe ob bereits Total War aktiv ist
+                    // Check if Total War is already active
                     if (foundWar.totalWar) {
                         ctx.source.sendFailure(Component.red('Total War is already active!'))
                         return 0
@@ -835,16 +835,16 @@ ServerEvents.commandRegistry(event => {
                     let enemyPartyId = (foundWar.myPartyId === myPartyId) ? foundWar.enemyPartyId : foundWar.myPartyId
                     let requestKey = foundWarKey
                     
-                    // Prüfe ob andere Seite bereits angefragt hat
+                    // Check if the other side has already requested
                     if (global.totalWarRequests.has(requestKey)) {
                         let request = global.totalWarRequests.get(requestKey)
                         
-                        // Wenn die andere Seite angefragt hat, akzeptiere
+                        // If the other side has requested, accept
                         if (request.requesterId !== myPartyId) {
                             let server = ctx.source.getServer()
                             let enemyParty = getPartyById(enemyPartyId)
                             
-                            // Aktiviere Total War
+                            // Activate Total War
                             foundWar.totalWar = true
                             server.runCommand('ftbteams party settings_for ' + foundWar.myPartyName + ' ftbchunks:block_edit_mode public')
                             server.runCommand('ftbteams party settings_for ' + foundWar.enemyPartyName + ' ftbchunks:block_edit_mode public')
@@ -860,7 +860,7 @@ ServerEvents.commandRegistry(event => {
                             return 0
                         }
                     } else {
-                        // Sende neue Anfrage
+                        // Send new request
                         global.totalWarRequests.set(requestKey, {
                             requesterId: myPartyId,
                             timestamp: Date.now()
@@ -876,7 +876,7 @@ ServerEvents.commandRegistry(event => {
                         
                         ctx.source.sendSuccess(Component.green('Total War proposal sent!'), true)
                         
-                        // Lösche Anfrage nach 5 Minuten
+                        // Delete request after 5 minutes
                         Utils.server.scheduleInTicks(PEACE_REQUEST_TIMEOUT, () => {
                             global.totalWarRequests.delete(requestKey)
                         })
