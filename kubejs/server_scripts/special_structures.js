@@ -1,10 +1,10 @@
-// Structure Scanner System - Ähnlich wie WorldEdit
-// Speichert Spieler-Positionen und gescannte Strukturen
+// Structure Scanner System - Similar to WorldEdit
+// Stores player positions and scanned structures
 
-// Global storage für Spieler-Positionen und Scan-Daten
+// Global storage for player positions and scan data
 global.structureScanner = global.structureScanner || {
-    positions: {}, // Speichert pos1 und pos2 für jeden Spieler
-    scannedData: {} // Speichert gescannte Strukturdaten für jeden Spieler
+    positions: {}, // Stores pos1 and pos2 for each player
+    scannedData: {} // Stores scanned structure data for each player
 };
 
 ServerEvents.commandRegistry(event => {
@@ -15,7 +15,7 @@ ServerEvents.commandRegistry(event => {
         .then(Commands.literal('pos1').executes(ctx => {
             const player = ctx.source.player;
             if (!player) {
-                ctx.source.sendFailure('§cDieser Command kann nur von einem Spieler ausgeführt werden!');
+                ctx.source.sendFailure('§cThis command can only be executed by a player!');
                 return 0;
             }
             
@@ -32,7 +32,7 @@ ServerEvents.commandRegistry(event => {
                 z: pos.z
             };
             
-            player.tell(`§aPosition 1 gesetzt: §f${pos.x}, ${pos.y}, ${pos.z}`);
+            player.tell(`§aPosition 1 set: §f${pos.x}, ${pos.y}, ${pos.z}`);
             return 1;
         }))
         
@@ -40,7 +40,7 @@ ServerEvents.commandRegistry(event => {
         .then(Commands.literal('pos2').executes(ctx => {
             const player = ctx.source.player;
             if (!player) {
-                ctx.source.sendFailure('§cDieser Command kann nur von einem Spieler ausgeführt werden!');
+                ctx.source.sendFailure('§cThis command can only be executed by a player!');
                 return 0;
             }
             
@@ -57,7 +57,7 @@ ServerEvents.commandRegistry(event => {
                 z: pos.z
             };
             
-            player.tell(`§aPosition 2 gesetzt: §f${pos.x}, ${pos.y}, ${pos.z}`);
+            player.tell(`§aPosition 2 set: §f${pos.x}, ${pos.y}, ${pos.z}`);
             return 1;
         }))
         
@@ -65,7 +65,7 @@ ServerEvents.commandRegistry(event => {
         .then(Commands.literal('scan').executes(ctx => {
             const player = ctx.source.player;
             if (!player) {
-                ctx.source.sendFailure('§cDieser Command kann nur von einem Spieler ausgeführt werden!');
+                ctx.source.sendFailure('§cThis command can only be executed by a player!');
                 return 0;
             }
             
@@ -73,14 +73,14 @@ ServerEvents.commandRegistry(event => {
             const positions = global.structureScanner.positions[playerId];
             
             if (!positions || !positions.pos1 || !positions.pos2) {
-                player.tell('§cBitte setze zuerst beide Positionen mit /structure pos1 und /structure pos2!');
+                player.tell('§cPlease set both positions first with /structure pos1 and /structure pos2!');
                 return 0;
             }
             
             const pos1 = positions.pos1;
             const pos2 = positions.pos2;
             
-            // Berechne min/max Koordinaten
+            // Calculate min/max coordinates
             const minX = Math.min(pos1.x, pos2.x);
             const maxX = Math.max(pos1.x, pos2.x);
             const minY = Math.min(pos1.y, pos2.y);
@@ -93,9 +93,9 @@ ServerEvents.commandRegistry(event => {
             const sizeZ = maxZ - minZ + 1;
             const totalBlocks = sizeX * sizeY * sizeZ;
             
-            player.tell(`§eScanne Struktur... Größe: §f${sizeX}x${sizeY}x${sizeZ} §e(${totalBlocks} Blöcke)`);
+            player.tell(`§eScanning structure... Size: §f${sizeX}x${sizeY}x${sizeZ} §e(${totalBlocks} blocks)`);
             
-            // Scanne alle Blöcke im Bereich
+            // Scan all blocks in the area
             const blocks = [];
             const level = player.level;
             
@@ -105,21 +105,21 @@ ServerEvents.commandRegistry(event => {
                         const blockPos = { x: x, y: y, z: z };
                         const block = level.getBlock(blockPos);
                         
-                        // Speichere relative Position zum Ursprung (minX, minY, minZ)
+                        // Save relative position to origin (minX, minY, minZ)
                         const relativePos = {
                             x: x - minX,
                             y: y - minY,
                             z: z - minZ
                         };
                         
-                        // Speichere Block-Informationen
+                        // Save block information
                         const blockData = {
                             pos: relativePos,
                             id: block.id,
                             properties: {}
                         };
                         
-                        // Speichere Block-Properties (z.B. facing, waterlogged, etc.)
+                        // Save block properties (e.g., facing, waterlogged, etc.)
                         const blockState = block.blockState;
                         if (blockState && blockState.properties) {
                             const props = blockState.properties;
@@ -129,7 +129,7 @@ ServerEvents.commandRegistry(event => {
                             });
                         }
                         
-                        // Optional: Speichere Block Entity Daten (Truhen, Signs, etc.)
+                        // Optional: Save block entity data (chests, signs, etc.)
                         const blockEntity = block.entity;
                         if (blockEntity) {
                             blockData.nbt = blockEntity.serializeNBT().toString();
@@ -140,7 +140,7 @@ ServerEvents.commandRegistry(event => {
                 }
             }
             
-            // Speichere gescannte Daten
+            // Save scanned data
             global.structureScanner.scannedData[playerId] = {
                 size: { x: sizeX, y: sizeY, z: sizeZ },
                 origin: { x: minX, y: minY, z: minZ },
@@ -148,8 +148,8 @@ ServerEvents.commandRegistry(event => {
                 timestamp: Date.now()
             };
             
-            player.tell(`§aErfolgreich gescannt! §f${blocks.length} §aBlöcke gespeichert.`);
-            player.tell(`§eVerwende §f/structure save <Name> §eum die Struktur zu speichern.`);
+            player.tell(`§aSuccessfully scanned! §f${blocks.length} §ablocks saved.`);
+            player.tell(`§eUse §f/structure save <Name> §eto save the structure.`);
             
             return 1;
         }))
@@ -159,7 +159,7 @@ ServerEvents.commandRegistry(event => {
             .then(Commands.argument('name', Arguments.STRING.create(event)).executes(ctx => {
                 const player = ctx.source.player;
                 if (!player) {
-                    ctx.source.sendFailure('§cDieser Command kann nur von einem Spieler ausgeführt werden!');
+                    ctx.source.sendFailure('§cThis command can only be executed by a player!');
                     return 0;
                 }
                 
@@ -167,14 +167,14 @@ ServerEvents.commandRegistry(event => {
                 const scannedData = global.structureScanner.scannedData[playerId];
                 
                 if (!scannedData) {
-                    player.tell('§cKeine gescannte Struktur gefunden! Verwende zuerst /structure scan.');
+                    player.tell('§cNo scanned structure found! Use /structure scan first.');
                     return 0;
                 }
                 
                 const structureName = Arguments.STRING.getResult(ctx, 'name');
                 const fileName = structureName.replace(/[^a-zA-Z0-9_-]/g, '_');
                 
-                // Erstelle Struktur-Objekt
+                // Create structure object
                 const structure = {
                     name: structureName,
                     created: new Date().toISOString(),
@@ -185,12 +185,12 @@ ServerEvents.commandRegistry(event => {
                     blocks: scannedData.blocks
                 };
                 
-                // Speichere als JSON-Datei
+                // Save as JSON file
                 try {
                     const filePath = `kubejs/data/structures/${fileName}.json`;
                     const jsonString = JSON.stringify(structure, null, 2);
                     
-                    // Schreibe Datei
+                    // Write file
                     const File = Java.loadClass('java.io.File');
                     const FileWriter = Java.loadClass('java.io.FileWriter');
                     
@@ -204,13 +204,13 @@ ServerEvents.commandRegistry(event => {
                     writer.write(jsonString);
                     writer.close();
                     
-                    player.tell(`§aStruktur erfolgreich gespeichert: §f${fileName}.json`);
-                    player.tell(`§7Pfad: ${filePath}`);
-                    player.tell(`§7Größe: ${structure.size.x}x${structure.size.y}x${structure.size.z}, Blöcke: ${structure.totalBlocks}`);
+                    player.tell(`§aStructure successfully saved: §f${fileName}.json`);
+                    player.tell(`§7Path: ${filePath}`);
+                    player.tell(`§7Size: ${structure.size.x}x${structure.size.y}x${structure.size.z}, Blocks: ${structure.totalBlocks}`);
                     
                     return 1;
                 } catch (error) {
-                    player.tell(`§cFehler beim Speichern: ${error}`);
+                    player.tell(`§cError while saving: ${error}`);
                     console.error('Structure save error: ' + error);
                     return 0;
                 }
@@ -221,7 +221,7 @@ ServerEvents.commandRegistry(event => {
         .then(Commands.literal('info').executes(ctx => {
             const player = ctx.source.player;
             if (!player) {
-                ctx.source.sendFailure('§cDieser Command kann nur von einem Spieler ausgeführt werden!');
+                ctx.source.sendFailure('§cThis command can only be executed by a player!');
                 return 0;
             }
             
@@ -235,14 +235,14 @@ ServerEvents.commandRegistry(event => {
                 const p1 = positions.pos1;
                 player.tell(`§aPosition 1: §f${p1.x}, ${p1.y}, ${p1.z}`);
             } else {
-                player.tell('§7Position 1: Nicht gesetzt');
+                player.tell('§7Position 1: Not set');
             }
             
             if (positions && positions.pos2) {
                 const p2 = positions.pos2;
                 player.tell(`§aPosition 2: §f${p2.x}, ${p2.y}, ${p2.z}`);
             } else {
-                player.tell('§7Position 2: Nicht gesetzt');
+                player.tell('§7Position 2: Not set');
             }
             
             if (positions && positions.pos1 && positions.pos2) {
@@ -251,14 +251,14 @@ ServerEvents.commandRegistry(event => {
                 const sizeX = Math.abs(p2.x - p1.x) + 1;
                 const sizeY = Math.abs(p2.y - p1.y) + 1;
                 const sizeZ = Math.abs(p2.z - p1.z) + 1;
-                player.tell(`§eGröße: §f${sizeX}x${sizeY}x${sizeZ} §e(${sizeX * sizeY * sizeZ} Blöcke)`);
+                player.tell(`§eSize: §f${sizeX}x${sizeY}x${sizeZ} §e(${sizeX * sizeY * sizeZ} blocks)`);
             }
             
             if (scannedData) {
-                player.tell(`§aGescannte Struktur vorhanden: §f${scannedData.blocks.length} Blöcke`);
-                player.tell(`§7Verwende /structure save <Name> zum Speichern`);
+                player.tell(`§aScanned structure available: §f${scannedData.blocks.length} blocks`);
+                player.tell(`§7Use /structure save <Name> to save`);
             } else {
-                player.tell('§7Keine gescannte Struktur vorhanden');
+                player.tell('§7No scanned structure available');
             }
             
             return 1;
@@ -269,15 +269,15 @@ ServerEvents.commandRegistry(event => {
             .then(Commands.argument('filename', Arguments.STRING.create(event)).executes(ctx => {
                 const player = ctx.source.player;
                 if (!player) {
-                    ctx.source.sendFailure('§cDieser Command kann nur von einem Spieler ausgeführt werden!');
+                    ctx.source.sendFailure('§cThis command can only be executed by a player!');
                     return 0;
                 }
                 
                 const fileName = Arguments.STRING.getResult(ctx, 'filename');
                 const playerId = player.uuid.toString();
                 
-                // Einfachere Variante: Lade JSON statt NBT
-                // NBT-Dateien müssen erst mit /structure scan + save konvertiert werden
+                // Simpler variant: Load JSON instead of NBT
+                // NBT files must first be converted with /structure scan + save
                 try {
                     let jsonPath = `structures/${fileName}`;
                     if (!jsonPath.endsWith('.json')) {
@@ -287,13 +287,13 @@ ServerEvents.commandRegistry(event => {
                     let structureData = JsonIO.read(jsonPath);
                     
                     if (!structureData || !structureData.blocks) {
-                        player.tell('§cKeine gültige Struktur-Datei gefunden!');
-                        player.tell('§7Hinweis: NBT-Dateien werden derzeit nicht unterstützt.');
-                        player.tell('§7Verwende /structure scan und /structure save um Strukturen zu speichern.');
+                        player.tell('§cNo valid structure file found!');
+                        player.tell('§7Note: NBT files are currently not supported.');
+                        player.tell('§7Use /structure scan and /structure save to save structures.');
                         return 0;
                     }
                     
-                    // Lade aus JSON
+                    // Load from JSON
                     global.structureScanner.scannedData[playerId] = {
                         size: structureData.size || { x: 1, y: 1, z: 1 },
                         origin: structureData.origin || { x: 0, y: 0, z: 0 },
@@ -303,16 +303,16 @@ ServerEvents.commandRegistry(event => {
                         sourceFile: jsonPath
                     };
                     
-                    player.tell(`§aERFOLGREICH! JSON-Struktur geladen:`);
-                    player.tell(`§fGröße: ${structureData.size.x}x${structureData.size.y}x${structureData.size.z}`);
-                    player.tell(`§fBlöcke: ${structureData.blocks.length}`);
-                    player.tell('§eVerwende §f/structure paste §eum zu platzieren');
+                    player.tell(`§aSUCCESS! JSON structure loaded:`);
+                    player.tell(`§fSize: ${structureData.size.x}x${structureData.size.y}x${structureData.size.z}`);
+                    player.tell(`§fBlocks: ${structureData.blocks.length}`);
+                    player.tell('§eUse §f/structure paste §eto place');
                     
-                    player.tell('§eVerwende §f/structure paste §eum zu platzieren');
+                    player.tell('§eUse §f/structure paste §eto place');
                     
                     return 1;
                 } catch (error) {
-                    player.tell(`§cFehler beim Laden: ${error}`);
+                    player.tell(`§cError while loading: ${error}`);
                     console.error('Structure load error: ' + error);
                     return 0;
                 }
@@ -323,7 +323,7 @@ ServerEvents.commandRegistry(event => {
         .then(Commands.literal('paste').executes(ctx => {
             const player = ctx.source.player;
             if (!player) {
-                ctx.source.sendFailure('§cDieser Command kann nur von einem Spieler ausgeführt werden!');
+                ctx.source.sendFailure('§cThis command can only be executed by a player!');
                 return 0;
             }
             
@@ -331,7 +331,7 @@ ServerEvents.commandRegistry(event => {
             const scannedData = global.structureScanner.scannedData[playerId];
             
             if (!scannedData) {
-                player.tell('§cKeine Struktur zum Platzieren! Verwende /structure scan oder /structure load zuerst.');
+                player.tell('§cNo structure to place! Use /structure scan or /structure load first.');
                 return 0;
             }
             
@@ -339,12 +339,12 @@ ServerEvents.commandRegistry(event => {
             const level = player.level;
             const blocks = scannedData.blocks;
             
-            player.tell(`§ePlatziere Struktur... ${blocks.length} Blöcke`);
+            player.tell(`§ePlacing structure... ${blocks.length} blocks`);
             
             let placedBlocks = 0;
             let failedBlocks = 0;
             
-            // Platziere alle Blöcke
+            // Place all blocks
             blocks.forEach(blockData => {
                 try {
                     const worldPos = {
@@ -353,16 +353,16 @@ ServerEvents.commandRegistry(event => {
                         z: playerPos.z + blockData.pos.z
                     };
                     
-                    // Erstelle Block mit Properties
+                    // Create block with properties
                     let blockToPlace = Block.id(blockData.id);
                     
-                    // Setze Block Properties
+                    // Set block properties
                     if (blockData.properties && Object.keys(blockData.properties).length > 0) {
                         Object.entries(blockData.properties).forEach(([prop, value]) => {
                             try {
                                 blockToPlace = blockToPlace.with(prop, value);
                             } catch (e) {
-                                // Ignoriere invalide Properties
+                                // Ignore invalid properties
                             }
                         });
                     }
@@ -370,7 +370,7 @@ ServerEvents.commandRegistry(event => {
                     level.setBlock(worldPos, blockToPlace, 3);
                     placedBlocks++;
                     
-                    // Setze NBT-Daten falls vorhanden
+                    // Set NBT data if present
                     if (blockData.nbt) {
                         try {
                             const blockEntity = level.getBlockEntity(worldPos);
@@ -380,7 +380,7 @@ ServerEvents.commandRegistry(event => {
                                 blockEntity.deserializeNBT(nbtTag);
                             }
                         } catch (e) {
-                            // NBT setzen fehlgeschlagen
+                            // Setting NBT failed
                         }
                     }
                 } catch (error) {
@@ -388,10 +388,10 @@ ServerEvents.commandRegistry(event => {
                 }
             });
             
-            player.tell(`§aStruktur platziert!`);
-            player.tell(`§fErfolgreich: ${placedBlocks} Blöcke`);
+            player.tell(`§aStructure placed!`);
+            player.tell(`§fSuccessful: ${placedBlocks} blocks`);
             if (failedBlocks > 0) {
-                player.tell(`§cFehlgeschlagen: ${failedBlocks} Blöcke`);
+                player.tell(`§cFailed: ${failedBlocks} blocks`);
             }
             
             return 1;
@@ -401,7 +401,7 @@ ServerEvents.commandRegistry(event => {
         .then(Commands.literal('clear').executes(ctx => {
             const player = ctx.source.player;
             if (!player) {
-                ctx.source.sendFailure('§cDieser Command kann nur von einem Spieler ausgeführt werden!');
+                ctx.source.sendFailure('§cThis command can only be executed by a player!');
                 return 0;
             }
             
@@ -409,10 +409,10 @@ ServerEvents.commandRegistry(event => {
             delete global.structureScanner.positions[playerId];
             delete global.structureScanner.scannedData[playerId];
             
-            player.tell('§aAuswahl und gescannte Daten wurden gelöscht.');
+            player.tell('§aSelection and scanned data have been cleared.');
             return 1;
         }))
     );
 });
 
-console.info('Structure Scanner System geladen - Commands: /structure pos1, /structure pos2, /structure scan, /structure save <name>, /structure load <filename>, /structure paste');
+console.info('Structure Scanner System loaded - Commands: /structure pos1, /structure pos2, /structure scan, /structure save <name>, /structure load <filename>, /structure paste');

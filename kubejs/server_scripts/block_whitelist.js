@@ -1,4 +1,5 @@
-//Add blocks to FTB Whitelist
+// Add blocks to FTB Chunks interaction whitelist
+// This allows players to interact with these blocks even in claimed chunks they don't own
 ServerEvents.tags('block', e => {
   e.get('ftbchunks:interact_whitelist').add([
     'numismatics:creative_vendor',

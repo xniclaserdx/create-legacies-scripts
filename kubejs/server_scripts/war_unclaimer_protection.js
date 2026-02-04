@@ -1,9 +1,9 @@
 // ==================== HARDCORE REVIVAL INTEGRATION ====================
-// Globale Variable für knocked down Spieler
+// Global variable for knocked down players
 global.knockedDownPlayers = global.knockedDownPlayers || new Map() // Player-UUID -> { warKeys: [], checkStartTime }
-global.unclaimersToReturn = global.unclaimersToReturn || new Map() // Player-UUID -> Array of warKeys (für Respawn)
+global.unclaimersToReturn = global.unclaimersToReturn || new Map() // Player-UUID -> Array of warKeys (for respawn)
 
-// Hardcore Revival Event - Spieler wird gedownt
+// Hardcore Revival event - player gets knocked down
 NativeEvents.onEvent(
     Java.loadClass('net.blay09.mods.hardcorerevival.api.PlayerKnockedOutEvent'),
     event => {
@@ -13,7 +13,7 @@ NativeEvents.onEvent(
         let playerUuid = player.uuid.toString()
         console.log('[FactionWar] Player knocked down: ' + player.username)
         
-        // Suche nach War Unclaimer Items im Inventar
+        // Search for War Unclaimer items in inventory
         let inventory = player.inventory
         let foundUnclaimers = []
         let itemsToRemove = []
@@ -30,13 +30,13 @@ NativeEvents.onEvent(
         }
         
         if (foundUnclaimers.length > 0) {
-            // Speichere die War Keys
+            // Save the war keys
             global.knockedDownPlayers.set(playerUuid, {
                 warKeys: foundUnclaimers.map(u => u.warKey),
                 checkStartTime: Date.now()
             })
             
-            // Entferne Items aus Inventar
+            // Remove items from inventory
             itemsToRemove.forEach(slot => {
                 inventory.removeItem(slot, 64)
             })
@@ -47,10 +47,10 @@ NativeEvents.onEvent(
     }
 )
 
-// Tick Event - Überwache knocked down Spieler
+// Tick event - monitor knocked down players
 ServerEvents.tick(event => {
     if (!event.server) return
-    if (event.server.tickCount % 20 !== 0) return // Nur jede Sekunde prüfen
+    if (event.server.tickCount % 20 !== 0) return // Only check every second
     
     if (global.knockedDownPlayers.size === 0) return
     
@@ -62,28 +62,28 @@ ServerEvents.tick(event => {
             let player = event.server.getPlayerList().getPlayer(UUID.fromString(playerUuid))
             
             if (!player) {
-                // Spieler offline - entferne Tracking
+                // Player offline - remove tracking
                 playersToRestore.push(playerUuid)
                 return
             }
             
-            // Prüfe ob Spieler noch knocked down ist
+            // Check if player is still knocked down
             let HardcoreRevival = Java.loadClass('net.blay09.mods.hardcorerevival.HardcoreRevival')
             let revivalData = HardcoreRevival.getRevivalData(player)
             let isKnockedOut = revivalData.isKnockedOut()
             
             if (!isKnockedOut) {
-                // Spieler ist nicht mehr knocked down
-                // Prüfe ob er wiederbelebt wurde (lebt noch) oder gestorben ist (wartet auf Respawn)
+                // Player is no longer knocked down
+                // Check if they were revived (still alive) or died (waiting for respawn)
                 
                 if (player.isAlive()) {
-                    // Spieler wurde wiederbelebt - gib Items sofort zurück
+                    // Player was revived - return items immediately
                     let returnedCount = 0
                     
                     data.warKeys.forEach(warKey => {
-                        // Prüfe ob der War noch existiert
+                        // Check if the war still exists
                         if (global.activeWars.has(warKey)) {
-                            // Prüfe ob Spieler noch in einem der War-Teams ist
+                            // Check if player is still in one of the war teams
                             let warData = global.activeWars.get(warKey)
                             let FTBTeamsAPI = Java.loadClass('dev.ftb.mods.ftbteams.api.FTBTeamsAPI')
                             let playerTeamOptional = FTBTeamsAPI.api().getManager().getTeamByID(player.uuid)
@@ -92,7 +92,7 @@ ServerEvents.tick(event => {
                                 let playerPartyId = playerTeamOptional.get().getTeamId().toString()
                                 
                                 if (warData.myPartyId === playerPartyId || warData.enemyPartyId === playerPartyId) {
-                                    // Spieler ist noch Teil des Wars - gib Item zurück
+                                    // Player is still part of the war - return item
                                     let item = Item.of('minecraft:golden_sword', {
                                         warUnclaimer: 1,
                                         warID: warKey,
@@ -121,7 +121,7 @@ ServerEvents.tick(event => {
                         console.log('[FactionWar] Returned ' + returnedCount + ' unclaimer items to ' + player.username + ' (revived)')
                     }
                 } else {
-                    // Spieler ist gestorben - speichere für Respawn (nur wenn nicht schon vorhanden)
+                    // Player died - save for respawn (only if not already queued)
                     let alreadyQueued = false
                     global.unclaimersToReturn.forEach((value, key) => {
                         if (key === playerUuid || key.toString() === playerUuid.toString()) {
@@ -139,7 +139,7 @@ ServerEvents.tick(event => {
                 
                 playersToRestore.push(playerUuid)
             } else {
-                // Spieler ist noch knocked down - timeout check (5 Minuten)
+                // Player is still knocked down - timeout check (5 minutes)
                 let elapsed = Date.now() - data.checkStartTime
                 if (elapsed > 5 * 60 * 1000) {
                     console.log('[FactionWar] Timeout for knocked down player: ' + player.username)
@@ -152,21 +152,21 @@ ServerEvents.tick(event => {
         }
     })
     
-    // Entferne abgeschlossene Überwachungen
+    // Remove completed monitors
     playersToRestore.forEach(playerUuid => {
         global.knockedDownPlayers.delete(playerUuid)
     })
 })
 
 // ==================== DISCONNECT HANDLER ====================
-// Wenn Spieler disconnected während er downed ist, Items in Queue packen
+// If player disconnects while downed, put items in queue
 PlayerEvents.loggedOut(event => {
     let player = event.player
     if (!player) return
     
     let playerUuid = player.uuid
     
-    // Prüfe ob Spieler in knockedDownPlayers Map ist (manuelle Iteration wegen Java-UUID)
+    // Check if player is in knockedDownPlayers map (manual iteration due to Java UUID)
     let foundData = null
     let keyToDelete = null
     
@@ -180,7 +180,7 @@ PlayerEvents.loggedOut(event => {
     if (foundData) {
         console.log('[FactionWar] Player ' + player.username + ' disconnected while downed, queueing items')
         
-        // Packe Items in Respawn-Queue
+        // Put items in respawn queue
         let alreadyQueued = false
         global.unclaimersToReturn.forEach((value, key) => {
             if (key === playerUuid || key.toString() === playerUuid.toString()) {
@@ -193,7 +193,7 @@ PlayerEvents.loggedOut(event => {
             console.log('[FactionWar] Queued ' + foundData.warKeys.length + ' items for ' + player.username + ' (disconnected while downed)')
         }
         
-        // Entferne aus knockedDownPlayers
+        // Remove from knockedDownPlayers
         if (keyToDelete) {
             global.knockedDownPlayers.delete(keyToDelete)
         }
@@ -201,38 +201,38 @@ PlayerEvents.loggedOut(event => {
 })
 
 // ==================== RESPAWN HANDLER ====================
-// Gib War Unclaimer Items beim Respawn zurück
+// Return War Unclaimer items on respawn
 PlayerEvents.respawned(event => {
     let player = event.player
     let playerUuid = player.uuid.toString()
     
-    // Workaround: Java-UUID-Objekte funktionieren nicht mit .has()/.get(), daher manuelle Iteration
+    // Workaround: Java UUID objects don't work with .has()/.get(), so manual iteration
     let foundMatch = false
     let matchedValue = null
-    let keysToDelete = [] // Sammle ALLE Keys für diesen Spieler zum Löschen
+    let keysToDelete = [] // Collect ALL keys for this player for deletion
     
     global.unclaimersToReturn.forEach((value, key) => {
         if (key === playerUuid || key.toString() === playerUuid.toString()) {
             if (!foundMatch) {
-                // Verwende nur den ersten Match (normalerweise gibt es nur einen)
+                // Use only the first match (normally there is only one)
                 foundMatch = true
                 matchedValue = value
             }
-            keysToDelete.push(key) // Sammle ALLE Keys zum Löschen (für Duplikate)
+            keysToDelete.push(key) // Collect ALL keys for deletion (for duplicates)
         }
     })
     
     if (foundMatch && matchedValue) {
         let warKeys = matchedValue
         
-        // Warte 20 Ticks (1 Sekunde) damit Inventar bereit ist
+        // Wait 20 ticks (1 second) so inventory is ready
         player.server.scheduleInTicks(20, () => {
             let returnedCount = 0
             
             warKeys.forEach(warKey => {
-                // Prüfe ob der War noch existiert
+                // Check if the war still exists
                 if (global.activeWars.has(warKey)) {
-                    // Prüfe ob Spieler noch in einem der War-Teams ist
+                    // Check if player is still in one of the war teams
                     let warData = global.activeWars.get(warKey)
                     let FTBTeamsAPI = Java.loadClass('dev.ftb.mods.ftbteams.api.FTBTeamsAPI')
                     let playerTeamOptional = FTBTeamsAPI.api().getManager().getTeamByID(player.uuid)
@@ -241,7 +241,7 @@ PlayerEvents.respawned(event => {
                         let playerPartyId = playerTeamOptional.get().getTeamId().toString()
                         
                         if (warData.myPartyId === playerPartyId || warData.enemyPartyId === playerPartyId) {
-                            // Spieler ist noch Teil des Wars - gib Item zurück
+                            // Player is still part of the war - return item
                             let item = Item.of('minecraft:golden_sword', {
                                 warUnclaimer: 1,
                                 warID: warKey,
@@ -270,9 +270,9 @@ PlayerEvents.respawned(event => {
                 console.log('[FactionWar] Returned ' + returnedCount + ' unclaimer items to ' + player.username + ' (respawned after knock down)')
             }
             
-            // Entferne ALLE Einträge für diesen Spieler aus der Queue
-            // Workaround: forEach + delete mit Java-UUID Keys funktioniert nicht zuverlässig
-            // Erstelle neue Map ohne die zu löschenden Einträge
+            // Remove ALL entries for this player from the queue
+            // Workaround: forEach + delete with Java UUID keys doesn't work reliably
+            // Create new map without the entries to delete
             let newQueue = new Map()
             global.unclaimersToReturn.forEach((value, key) => {
                 let shouldKeep = true
@@ -291,34 +291,34 @@ PlayerEvents.respawned(event => {
 })
 
 // ==================== LOGIN CLEANUP ====================
-// Entferne Unclaimer Items beim Login wenn der Krieg vorbei ist
-// UND gib Items zurück wenn sie noch in der Respawn-Queue sind
+// Remove Unclaimer items on login if the war is over
+// AND return items if they are still in the respawn queue
 PlayerEvents.loggedIn(event => {
     let player = event.player
     let playerUuid = player.uuid.toString()
     
-    // Warte 20 Ticks bevor wir das Inventar prüfen
+    // Wait 20 ticks before checking inventory
     Utils.server.scheduleInTicks(20, () => {
-        // ERST: Prüfe ob Spieler Items in der Respawn-Queue hat (z.B. nach Logout im Death Screen)
+        // FIRST: Check if player has items in the respawn queue (e.g., after logout in death screen)
         let foundInQueue = false
         let queuedWarKeys = null
-        let keysToDelete = [] // Sammle ALLE Keys für diesen Spieler zum Löschen
+        let keysToDelete = [] // Collect ALL keys for this player for deletion
         
         global.unclaimersToReturn.forEach((value, key) => {
             if (key === playerUuid || key.toString() === playerUuid.toString()) {
                 if (!foundInQueue) {
-                    // Verwende nur den ersten Match (normalerweise gibt es nur einen)
+                    // Use only the first match (normally there is only one)
                     foundInQueue = true
                     queuedWarKeys = value
                 }
-                keysToDelete.push(key) // Sammle ALLE Keys zum Löschen (für Duplikate)
+                keysToDelete.push(key) // Collect ALL keys for deletion (for duplicates)
             }
         })
         
-        // Items NUR zurückgeben wenn Spieler VOLLSTÄNDIG lebendig ist (nicht downed, nicht im death screen)
-        // Sonst: Queue bleibt unberührt, Tick-Event (revival) oder Respawn-Event (death) kümmert sich darum
+        // ONLY return items if player is COMPLETELY alive (not downed, not in death screen)
+        // Otherwise: Queue stays intact, tick event (revival) or respawn event (death) takes care of it
         if (foundInQueue) {
-            // Prüfe ob Spieler downed ist
+            // Check if player is downed
             let isKnockedOut = false
             try {
                 let HardcoreRevival = Java.loadClass('net.blay09.mods.hardcorerevival.HardcoreRevival')
@@ -335,7 +335,7 @@ PlayerEvents.loggedIn(event => {
             } else if (!player.isAlive()) {
                 console.log('[FactionWar] Player ' + player.username + ' logged in while dead, items remain queued')
             } else {
-                // Spieler ist vollständig lebendig - gib Items zurück und lösche Queue
+                // Player is completely alive - return items and delete queue
                 console.log('[FactionWar] Player ' + player.username + ' logged in alive with queued items, returning them')
                 let returnedCount = 0
                 
@@ -377,9 +377,9 @@ PlayerEvents.loggedIn(event => {
                     console.log('[FactionWar] Returned ' + returnedCount + ' unclaimer items to ' + player.username + ' (login alive)')
                 }
                 
-                // Entferne ALLE Einträge für diesen Spieler aus der Queue
-                // Workaround: forEach + delete mit Java-UUID Keys funktioniert nicht zuverlässig
-                // Erstelle neue Map ohne die zu löschenden Einträge
+                // Remove ALL entries for this player from the queue
+                // Workaround: forEach + delete with Java UUID keys doesn't work reliably
+                // Create new map without the entries to delete
                 let newQueue = new Map()
                 global.unclaimersToReturn.forEach((value, key) => {
                     let shouldKeep = true
@@ -396,7 +396,7 @@ PlayerEvents.loggedIn(event => {
             }
         }
         
-        // DANN: Cleanup ungültiger Items (wie bisher)
+        // THEN: Cleanup invalid items (as before)
         let inventory = player.inventory
         let itemsToRemove = []
         
@@ -405,17 +405,17 @@ PlayerEvents.loggedIn(event => {
             if (item && item.nbt && item.nbt.warUnclaimer === 1) {
                 let shouldRemove = false
                 
-                // Prüfe ob das Item eine warID hat
+                // Check if the item has a warID
                 if (!item.nbt.warID) {
                     shouldRemove = true
                 } else {
                     let itemWarID = item.nbt.warID
                     
-                    // Prüfe ob dieser War noch existiert
+                    // Check if this war still exists
                     if (!global.activeWars.has(itemWarID)) {
                         shouldRemove = true
                     } else {
-                        // War existiert noch, prüfe ob Spieler Teil davon ist
+                        // War still exists, check if player is part of it
                         let warData = global.activeWars.get(itemWarID)
                         let FTBTeamsAPI = Java.loadClass('dev.ftb.mods.ftbteams.api.FTBTeamsAPI')
                         let playerTeamOptional = FTBTeamsAPI.api().getManager().getTeamByID(player.uuid)
@@ -426,7 +426,7 @@ PlayerEvents.loggedIn(event => {
                             let playerTeam = playerTeamOptional.get()
                             let playerPartyId = playerTeam.getTeamId().toString()
                             
-                            // Prüfe ob Spieler Teil dieses Wars ist
+                            // Check if player is part of this war
                             if (warData.myPartyId !== playerPartyId && warData.enemyPartyId !== playerPartyId) {
                                 shouldRemove = true
                             }
@@ -440,7 +440,7 @@ PlayerEvents.loggedIn(event => {
             }
         }
         
-        // Entferne die Items
+        // Remove the items
         itemsToRemove.forEach(slot => {
             inventory.removeItem(slot, 64)
             console.log('[FactionWar] Removed unclaimer from ' + player.username + ' on login (slot ' + slot + ')')
