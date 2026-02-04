@@ -21,7 +21,7 @@ else {
     blacklistTester = new RegExp('$^'); // Regex that matches nothing
 }
 
-// Globale Variable für den Timer
+// Global variable for the timer
 global.clearLagTimer = global.clearLagTimer || 0;
 
 let clearLag = function(server, showMessage) {
@@ -36,7 +36,7 @@ let clearLag = function(server, showMessage) {
 
     console.log('ClearLag: Starting item cleanup...');
 
-    // Iteriere durch alle Dimensionen
+    // Iterate through all dimensions
     server.getAllLevels().forEach(level => {
         let itemEntities = level.entities.filter(entity => entity.type === 'minecraft:item');
         
@@ -78,35 +78,35 @@ let clearLag = function(server, showMessage) {
     global.clearLagTimer = 0;
 }
 
-// Server Tick Event für Timer
+// Server tick event for timer
 ServerEvents.tick(event => {
-    // Nur jeden 20. Tick (1 Sekunde) prüfen
+    // Only check every 20th tick (1 second)
     if (event.server.tickCount % 20 !== 0) return;
     
     global.clearLagTimer++;
     let secondsElapsed = global.clearLagTimer;
-    let totalSeconds = Interval * 60; // Interval in Sekunden
+    let totalSeconds = Interval * 60; // Interval in seconds
     let secondsLeft = totalSeconds - secondsElapsed;
     let minutesLeft = Math.floor(secondsLeft / 60);
     
-    // Debug-Log alle 10 Sekunden
+    // Debug log every 10 seconds
     if (secondsElapsed % 10 === 0) {
         console.log(`ClearLag Timer: ${secondsElapsed}s elapsed, ${secondsLeft}s left`);
     }
     
-    // Cleanup ausführen
+    // Execute cleanup
     if (secondsElapsed >= totalSeconds) {
         console.log('ClearLag: Time reached, executing cleanup...');
         clearLag(event.server, true);
         return;
     }
     
-    // Minuten-Benachrichtigungen (ohne Item-Count wegen Gravestone Kompatibilität)
+    // Minute notifications (without item count for Gravestone compatibility)
     if (secondsLeft % 60 === 0 && notifications.includes(minutesLeft)) {
         event.server.tell(Component.green('[ClearLag] ').append(Component.white(`Item cleanup in ${minutesLeft} minutes!`)));
     }
     
-    // Sekunden-Benachrichtigungen (ohne Item-Count wegen Gravestone Kompatibilität)
+    // Second notifications (without item count for Gravestone compatibility)
     if (second_notifications.includes(secondsLeft)) {
         event.server.tell(Component.green('[ClearLag] ').append(Component.white(`Item cleanup in ${secondsLeft} seconds!`)));
     }

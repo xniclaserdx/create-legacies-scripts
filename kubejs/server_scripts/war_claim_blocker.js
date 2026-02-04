@@ -1,5 +1,5 @@
-// Event um zu verhindern, dass während des Krieges neue Claims gemacht werden
-// und dass Verlierer-Factions 1 Stunde nach Kriegsende nicht claimen können
+// Event to prevent new claims during war
+// and prevent losing factions from claiming for 1 hour after war ends
 FTBChunksEvents.before("claim", event => {
     let player = event.player
     
@@ -20,15 +20,15 @@ FTBChunksEvents.before("claim", event => {
     let playerPartyShortName = playerTeam.getShortName()
     let playerPartyId = null
     
-    // Wenn Spieler in einem Player-Team ist, finde die richtige Party
+    // If player is in a player team, find the actual party
     if (playerTeam.isPlayerTeam()) {
-        // Hole alle Teams und finde die Party, zu der der Spieler gehört
+        // Get all teams and find the party the player belongs to
         let allTeams = teamManager.getTeams()
         let foundParty = null
         
         allTeams.forEach(team => {
             if (!team.isPlayerTeam() && team.isValid()) {
-                // Prüfe ob Spieler Mitglied dieser Party ist
+                // Check if player is a member of this party
                 let members = team.getMembers()
                 members.forEach(memberId => {
                     if (memberId.toString() === player.uuid.toString()) {
@@ -47,7 +47,7 @@ FTBChunksEvents.before("claim", event => {
         playerPartyId = playerTeam.getTeamId().toString()
     }
     
-    // Prüfe ob Team in einem aktiven Krieg ist - BLOCKIERE JEDES CLAIMEN
+    // Check if team is in an active war - BLOCK ALL CLAIMING
     if (global.activeWars) {
         global.activeWars.forEach((warData, warKey) => {
             if (warData.myPartyName === playerPartyShortName || warData.enemyPartyName === playerPartyShortName) {
@@ -57,7 +57,7 @@ FTBChunksEvents.before("claim", event => {
         })
     }
     
-    // Prüfe ob Team einen Defeat Cooldown hat (1 Stunde nach Kriegsniederlage)
+    // Check if team has a defeat cooldown (1 hour after war defeat)
     if (global.defeatCooldowns && playerPartyId) {
         if (global.defeatCooldowns.has(playerPartyId)) {
             let cooldownStart = global.defeatCooldowns.get(playerPartyId)
@@ -70,7 +70,7 @@ FTBChunksEvents.before("claim", event => {
                 player.tell(Component.red('§c[War] Your faction cannot claim yet! Cooldown: ' + remainingMinutes + ' minutes remaining'))
                 event.result = 'not_owner'
             } else {
-                // Cooldown abgelaufen, entferne ihn
+                // Cooldown expired, remove it
                 global.defeatCooldowns.delete(playerPartyId)
                 console.log('[FactionWar] Defeat cooldown expired for party: ' + playerPartyShortName)
             }
@@ -78,7 +78,7 @@ FTBChunksEvents.before("claim", event => {
     }
 })
 
-// Helper function to count party claims (falls nicht bereits in test.js definiert)
+// Helper function to count party claims (if not already defined in test.js)
 function countPartyClaims(server, partyShortName) {
     let FTBChunksAPI = Java.loadClass('dev.ftb.mods.ftbchunks.api.FTBChunksAPI')
     let manager = FTBChunksAPI.api().getManager()
